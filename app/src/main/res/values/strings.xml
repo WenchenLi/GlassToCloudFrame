@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">GrandmaFrame</string>
+    <string name="title_activity_scroll_cards">choose pictures</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="voice_launch">Grandma Frame</string>
+    <string name="email">Email to Grandma</string>
+    <string name="delete">Delete from Glass</string>
+
+</resources>
