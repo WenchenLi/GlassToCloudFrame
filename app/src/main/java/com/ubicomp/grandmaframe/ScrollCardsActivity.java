@@ -126,8 +126,11 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                 int soundEffect = Sounds.SUCCESS;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
-                File file = new File(mPicturesPath.get(mPicturesPath.indexOf(mPicturePath)));
+                String path = mPicturesPath.get(mPicturesPath.indexOf(mPicturePath));
+                Log.v(TAG,"delete file"+path);
+                File file = new File(path);
                 boolean deleted = file.delete();
+
                 if(deleted) {
                     try {
                         mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() + 1);
