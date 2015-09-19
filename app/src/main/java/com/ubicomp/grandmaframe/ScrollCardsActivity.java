@@ -29,6 +29,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     private static final String TAG = ScrollCardsActivity.class.getSimpleName();
 
     private boolean mVoiceMenuEnabled = true;
+    private List<String> mPicturesPath;
     private String mPicturePath;
     private CardScrollView mCardScroller;
     private CardScrollAdapter mAdapter;
@@ -55,8 +56,19 @@ public class ScrollCardsActivity extends Activity implements Runnable{
 
     private List<CardBuilder> createCards(Context context) {
         ArrayList<CardBuilder> cards = new ArrayList<CardBuilder>();
-        cards.add(CARD_BUILDER, new CardBuilder(context, CardBuilder.Layout.TEXT)
-                .addImage(loadImage()));
+        mPicturesPath = loadImages();
+        BitmapFactory.Options opts=new BitmapFactory.Options();
+        opts.inJustDecodeBounds=true;
+        for (String path : mPicturesPath){
+            Bitmap myBitmap = BitmapFactory.decodeFile(path);
+
+            Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
+            cards.add(new CardBuilder(context, CardBuilder.Layout.CAPTION)
+                .addImage(Bitmap.createScaledBitmap(myBitmap, 640, 360, true)));
+
+        }
+//        cards.add(CARD_BUILDER, new CardBuilder(context, CardBuilder.Layout.TEXT)
+//                .addImage(loadImage()));
         return cards;
     }
     private void setCardScrollerListener() {
@@ -70,6 +82,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                 mVoiceMenuEnabled = !mVoiceMenuEnabled;
                 getWindow().invalidatePanelMenu(WindowUtils.FEATURE_VOICE_COMMANDS);
 
+                mPicturePath= mPicturesPath.get(position);
 
                 Toast.makeText(ScrollCardsActivity.this, "Sending email...", Toast.LENGTH_LONG).show();
                 Thread thread = new Thread(ScrollCardsActivity.this);
@@ -78,6 +91,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
 //                Toast.makeText(ScrollCardsActivity.this, "Deleted", Toast.LENGTH_SHORT).show();
 //                finish();
                 // Play sound.
+
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
             }
@@ -109,33 +123,47 @@ public class ScrollCardsActivity extends Activity implements Runnable{
             m.addAttachment(mPicturePath);
 
             if(m.send()) {
-                Toast.makeText(ScrollCardsActivity.this, "sent", Toast.LENGTH_SHORT).show();
+                int soundEffect = Sounds.SUCCESS;
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                am.playSoundEffect(soundEffect);
+                File file = new File(mPicturesPath.get(mPicturesPath.indexOf(mPicturePath)));
+                boolean deleted = file.delete();
+                if(deleted) {
+                    try {
+                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() + 1);
+                    } catch (NullPointerException e) {
+                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() - 1);
+                    }
+                }
 //                (new File(mPicturePath)).delete();
             }
             else {
-                Toast.makeText(ScrollCardsActivity.this, "failed", Toast.LENGTH_SHORT).show();
+                int soundEffect = Sounds.ERROR;
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                am.playSoundEffect(soundEffect);
             }
         } catch(Exception e) {
             Log.e("MailApp", "Could not send email", e);
         }
     }
-    private Bitmap loadImage(){
+    private List<String> loadImages(){
         File mPictureFilePath = new File("storage/emulated/0/DCIM/Camera");
         List<String> paths = new ArrayList<String>();
         File[] files = mPictureFilePath.listFiles();
-        for (File file : files) {
+        for (File file : files) {//TODO this is not a good way to do it, should pass to adapter
             try {
                 if (isJPEG(file))
                     paths.add(file.getAbsolutePath());
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            Log.v(TAG, String.valueOf(paths.size()));
+//            Log.v(TAG, String.valueOf(paths.size()));
         }
-        Bitmap myBitmap = BitmapFactory.decodeFile(paths.get(1));
-        mPicturePath = paths.get(0);//TODO this is a return variable attach to card
-        Bitmap scaled = Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
-        return scaled;
+        return paths;
+//        Bitmap myBitmap = BitmapFactory.decodeFile(paths.get(1));
+//        mPicturePath = paths.get(40);//TODO this is a return variable attach to card
+//        Bitmap scaled = Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
+//        return scaled;
     }
 
     private static Boolean isJPEG(File filename) throws Exception {
