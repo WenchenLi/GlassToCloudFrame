@@ -5,5 +5,17 @@
     <string name="voice_launch">Grandma Frame</string>
     <string name="email">Email to Grandma</string>
     <string name="delete">Delete from Glass</string>
+    <!-- Used to build a voice menu. -->
+    <string name="send_picture">Send Picture</string>
+    <string name="menu_coder">Pick a coder</string>
+    <string name="menu_coder1">Alfa</string>
+    <string name="menu_coder2">Bravo</string>
+    <string name="menu_coder3">Charlie</string>
+    <string name="menu_coder4">Delta</string>
+    <string name="menu_coder5">Echo</string>
+    <string name="delete_picture">Delete Picture</string>
 
+    <string name="voice_menu_explanation">
+        Sample voice menu activity. Tap to toggle voice menu.
+    </string>
 </resources>

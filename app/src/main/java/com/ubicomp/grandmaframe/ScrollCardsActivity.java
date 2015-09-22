@@ -7,10 +7,10 @@ import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.AdapterView;
-import android.widget.Toast;
 
 import com.google.android.glass.media.Sounds;
 import com.google.android.glass.view.WindowUtils;
@@ -33,7 +33,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     private String mPicturePath;
     private CardScrollView mCardScroller;
     private CardScrollAdapter mAdapter;
-    static final int CARD_BUILDER = 0;
+    private int mPicture=0;
 
 
     @Override
@@ -43,9 +43,6 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         // Requests a voice menu on this activity. As for any other window feature,
         // be sure to request this before setContentView() is called
         getWindow().requestFeature(WindowUtils.FEATURE_VOICE_COMMANDS);
-
-        // Ensure screen stays on during demo.
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         mAdapter = new CardAdapter(createCards(this));
         mCardScroller = new CardScrollView(this);
@@ -57,6 +54,8 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     private List<CardBuilder> createCards(Context context) {
         ArrayList<CardBuilder> cards = new ArrayList<CardBuilder>();
         mPicturesPath = loadImages();
+
+
         BitmapFactory.Options opts=new BitmapFactory.Options();
         opts.inJustDecodeBounds=true;
         for (String path : mPicturesPath){
@@ -65,10 +64,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
             Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
             cards.add(new CardBuilder(context, CardBuilder.Layout.CAPTION)
                 .addImage(Bitmap.createScaledBitmap(myBitmap, 640, 360, true)));
-
         }
-//        cards.add(CARD_BUILDER, new CardBuilder(context, CardBuilder.Layout.TEXT)
-//                .addImage(loadImage()));
         return cards;
     }
     private void setCardScrollerListener() {
@@ -83,10 +79,11 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                 getWindow().invalidatePanelMenu(WindowUtils.FEATURE_VOICE_COMMANDS);
 
                 mPicturePath= mPicturesPath.get(position);
+                Log.v(TAG+":onItemClick",mPicturePath);
 
-                Toast.makeText(ScrollCardsActivity.this, "Sending email...", Toast.LENGTH_LONG).show();
-                Thread thread = new Thread(ScrollCardsActivity.this);
-                thread.start();
+//                Toast.makeText(ScrollCardsActivity.this, "Sending email...", Toast.LENGTH_LONG).show();
+//                Thread thread = new Thread(ScrollCardsActivity.this);
+//                thread.start();
 //                (new File(mPicturePath)).delete();
 //                Toast.makeText(ScrollCardsActivity.this, "Deleted", Toast.LENGTH_SHORT).show();
 //                finish();
@@ -112,6 +109,73 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         super.onPause();
     }
 
+    @Override
+    public boolean onCreatePanelMenu(int featureId, Menu menu) {
+        if (featureId == WindowUtils.FEATURE_VOICE_COMMANDS) {
+            getMenuInflater().inflate(R.menu.voice_menu, menu);
+            return true;
+        }
+        // Good practice to pass through, for options menu.
+        return super.onCreatePanelMenu(featureId, menu);
+    }
+
+    @Override
+    public boolean onPreparePanel(int featureId, View view, Menu menu) {
+        if (featureId == WindowUtils.FEATURE_VOICE_COMMANDS) {
+            // Dynamically decides between enabling/disabling voice menu.
+            return mVoiceMenuEnabled;
+        }
+        // Good practice to pass through, for options menu.
+        return super.onPreparePanel(featureId, view, menu);
+    }
+
+    @Override
+    public boolean onMenuItemSelected(int featureId, MenuItem item) {
+        if (featureId == WindowUtils.FEATURE_VOICE_COMMANDS) {
+            switch (item.getItemId()) {
+                case R.id.send_picture:
+                    mPicturePath=mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                    Log.v(TAG+":onMenuItemSelected",mPicturePath);
+                    Thread thread = new Thread(ScrollCardsActivity.this);
+                    thread.start();
+                    try{
+                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()-1);
+                    }catch (NullPointerException e){
+                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
+
+                    }
+                    break;
+                case R.id.delete_picture:
+                    String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                    Log.v(TAG,"delete file"+path);
+                    File file = new File(path);
+                    boolean deleted = file.delete();
+                    AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                    if(deleted){
+                        int soundEffect = Sounds.SUCCESS;
+
+                        am.playSoundEffect(soundEffect);
+                    }
+                    else{
+                        int soundEffect = Sounds.ERROR;
+                        am.playSoundEffect(soundEffect);
+                    }
+                    break;
+                case R.id.menu_coder1:   mPicture = 1; break;
+                case R.id.menu_coder2:   mPicture = 2; break;
+                case R.id.menu_coder3:   mPicture = 3; break;
+                case R.id.menu_coder4:   mPicture = 4; break;
+                case R.id.menu_coder5:   mPicture = 5; break;
+
+                default: return true;  // No change.
+            }
+            mCardScroller.setAdapter(new CardAdapter(createCards(this)));
+            return true;
+        }
+        return super.onMenuItemSelected(featureId, item);
+    }
+
+
     public void run() {
         Mail m = new Mail(Constant.em, Constant.constant);
         String[] toArr = {Constant.frame};
@@ -121,23 +185,22 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         m.setBody("to grandma frame");
         try {
             m.addAttachment(mPicturePath);
-
             if(m.send()) {
                 int soundEffect = Sounds.SUCCESS;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
-                String path = mPicturesPath.get(mPicturesPath.indexOf(mPicturePath));
+                String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
                 Log.v(TAG,"delete file"+path);
                 File file = new File(path);
                 boolean deleted = file.delete();
 
-                if(deleted) {
-                    try {
-                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() + 1);
-                    } catch (NullPointerException e) {
-                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() - 1);
-                    }
-                }
+//                if(deleted) {
+//                    try {
+//                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() + 1);
+//                    } catch (NullPointerException e) {
+//                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() - 1);
+//                    }
+//                }
 //                (new File(mPicturePath)).delete();
             }
             else {
