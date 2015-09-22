@@ -7,7 +7,9 @@ import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -18,10 +20,7 @@ import com.google.android.glass.widget.CardBuilder;
 import com.google.android.glass.widget.CardScrollAdapter;
 import com.google.android.glass.widget.CardScrollView;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +33,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     private CardScrollView mCardScroller;
     private CardScrollAdapter mAdapter;
     private int mPicture=0;
-
+    private boolean mAutoDelete = true;//TODO this one need to save as sharedpreferences
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -53,7 +52,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
 
     private List<CardBuilder> createCards(Context context) {
         ArrayList<CardBuilder> cards = new ArrayList<CardBuilder>();
-        mPicturesPath = loadImages();
+        mPicturesPath = Util.loadImages();
 
 
         BitmapFactory.Options opts=new BitmapFactory.Options();
@@ -74,21 +73,10 @@ public class ScrollCardsActivity extends Activity implements Runnable{
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Log.d(TAG, "Clicked view at position " + position + ", row-id " + id);
                 int soundEffect = Sounds.TAP;
+                openOptionsMenu();
                 // Toggles voice menu. Invalidates menu to flag change.
-                mVoiceMenuEnabled = !mVoiceMenuEnabled;
-                getWindow().invalidatePanelMenu(WindowUtils.FEATURE_VOICE_COMMANDS);
-
-                mPicturePath= mPicturesPath.get(position);
-                Log.v(TAG+":onItemClick",mPicturePath);
-
-//                Toast.makeText(ScrollCardsActivity.this, "Sending email...", Toast.LENGTH_LONG).show();
-//                Thread thread = new Thread(ScrollCardsActivity.this);
-//                thread.start();
-//                (new File(mPicturePath)).delete();
-//                Toast.makeText(ScrollCardsActivity.this, "Deleted", Toast.LENGTH_SHORT).show();
-//                finish();
-                // Play sound.
-
+//                mVoiceMenuEnabled = !mVoiceMenuEnabled;
+//                getWindow().invalidatePanelMenu(WindowUtils.FEATURE_VOICE_COMMANDS);
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
             }
@@ -109,6 +97,75 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         super.onPause();
     }
 
+    //tap interface
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.voice_menu, menu);
+        return true;
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection. Menu items typically start another
+        // activity, start a service, or broadcast another intent.
+        switch (item.getItemId()) {
+            case R.id.send_picture:
+                mPicturePath=mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                Log.v(TAG+":onMenuItemSelected",mPicturePath);
+                Thread thread = new Thread(ScrollCardsActivity.this);
+                thread.start();
+                try{
+                    mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()-1);
+                }catch (NullPointerException e){
+                    mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
+
+                }
+                break;
+            case R.id.delete_picture:
+                String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                Log.v(TAG,"delete file"+path);
+                File file = new File(path);
+                boolean deleted = file.delete();
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if(deleted){
+                    int soundEffect = Sounds.SUCCESS;
+
+                    am.playSoundEffect(soundEffect);
+                }
+                else{
+                    int soundEffect = Sounds.ERROR;
+                    am.playSoundEffect(soundEffect);
+                }
+                break;
+            case R.id.menu_autodelete_on:   mAutoDelete =true; break;
+            case R.id.menu_autodelete_off:   mAutoDelete = false; break;
+
+
+            default: return super.onOptionsItemSelected(item);
+        }
+        return true;
+    }
+//To display the menu, call openOptionsMenu() when required, such as a tap on the touchpad.
+//The following examples detects a tap gesture on an activity and then calls openOptionsMenu().
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+            openOptionsMenu();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+//Android knows about several types of menus (e.g. Options Menu and Context Menu).
+// onMenuItemSelected is the generic callback. You don't need to use this usually.
+// onOptionsItemSelected is the callback of the options menu and onContextItemSelected is the
+// callback of the context menu. Use these two specific ones instead.
+
+
+// voice interface
     @Override
     public boolean onCreatePanelMenu(int featureId, Menu menu) {
         if (featureId == WindowUtils.FEATURE_VOICE_COMMANDS) {
@@ -161,11 +218,9 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                         am.playSoundEffect(soundEffect);
                     }
                     break;
-                case R.id.menu_coder1:   mPicture = 1; break;
-                case R.id.menu_coder2:   mPicture = 2; break;
-                case R.id.menu_coder3:   mPicture = 3; break;
-                case R.id.menu_coder4:   mPicture = 4; break;
-                case R.id.menu_coder5:   mPicture = 5; break;
+                case R.id.menu_autodelete_on:   mAutoDelete =true; break;
+                case R.id.menu_autodelete_off:   mAutoDelete = false; break;
+
 
                 default: return true;  // No change.
             }
@@ -185,64 +240,24 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         m.setBody("to grandma frame");
         try {
             m.addAttachment(mPicturePath);
-            if(m.send()) {
+            if(m.send()&&mAutoDelete) {
                 int soundEffect = Sounds.SUCCESS;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
                 String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
-                Log.v(TAG,"delete file"+path);
+                Log.v(TAG, "delete file" + path);
                 File file = new File(path);
                 boolean deleted = file.delete();
-
-//                if(deleted) {
-//                    try {
-//                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() + 1);
-//                    } catch (NullPointerException e) {
-//                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition() - 1);
-//                    }
-//                }
-//                (new File(mPicturePath)).delete();
             }
             else {
                 int soundEffect = Sounds.ERROR;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
             }
-        } catch(Exception e) {
-            Log.e("MailApp", "Could not send email", e);
         }
-    }
-    private List<String> loadImages(){
-        File mPictureFilePath = new File("storage/emulated/0/DCIM/Camera");
-        List<String> paths = new ArrayList<String>();
-        File[] files = mPictureFilePath.listFiles();
-        for (File file : files) {//TODO this is not a good way to do it, should pass to adapter
-            try {
-                if (isJPEG(file))
-                    paths.add(file.getAbsolutePath());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-//            Log.v(TAG, String.valueOf(paths.size()));
+        catch(Exception e) {
+            Log.e("Mail", "Could not send email", e);
         }
-        return paths;
-//        Bitmap myBitmap = BitmapFactory.decodeFile(paths.get(1));
-//        mPicturePath = paths.get(40);//TODO this is a return variable attach to card
-//        Bitmap scaled = Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
-//        return scaled;
     }
 
-    private static Boolean isJPEG(File filename) throws Exception {
-        DataInputStream ins = new DataInputStream(new BufferedInputStream(new FileInputStream(filename)));
-        try {
-            if (ins.readInt() == 0xffd8ffe0) {
-                return true;
-            } else {
-                return false;
-
-            }
-        } finally {
-            ins.close();
-        }
-    }
 }
