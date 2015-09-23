@@ -114,12 +114,9 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                 Log.v(TAG+":onMenuItemSelected",mPicturePath);
                 Thread thread = new Thread(ScrollCardsActivity.this);
                 thread.start();
-                try{
+                if(mCardScroller.getSelectedItemPosition()==cards.size()-1){
                     mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()-1);
-                }catch (NullPointerException e){
-                    mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
-
-                }
+                }else mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
                 break;
             case R.id.delete_picture:
                 String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
@@ -192,12 +189,10 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                     Log.v(TAG+":onMenuItemSelected",mPicturePath);
                     Thread thread = new Thread(ScrollCardsActivity.this);
                     thread.start();
-                    try{
+                    if(mCardScroller.getSelectedItemPosition()==cards.size()-1){
                         mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()-1);
-                    }catch (NullPointerException e){
-                        mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
+                    }else mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
 
-                    }
                     break;
                 case R.id.delete_picture:
                     String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
@@ -240,6 +235,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                 int soundEffect = Sounds.SUCCESS;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 am.playSoundEffect(soundEffect);
+//                mCardScroller.
                 String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
                 Log.v(TAG, "delete file" + path);
                 File file = new File(path);
