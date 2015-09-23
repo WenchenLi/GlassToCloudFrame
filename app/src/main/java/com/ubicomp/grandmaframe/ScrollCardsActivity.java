@@ -60,7 +60,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     private List<CardBuilder> createLoadCard(Context context) {
         ArrayList<CardBuilder> cards = new ArrayList<CardBuilder>();
         cards.add(new CardBuilder(context, CardBuilder.Layout.TEXT)
-                .setText("loading images:"));
+                .setText("loading images ..."));
         return cards;
     }
     private void setCardScrollerListener() {
