@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -19,6 +20,7 @@ import com.google.android.glass.view.WindowUtils;
 import com.google.android.glass.widget.CardBuilder;
 import com.google.android.glass.widget.CardScrollAdapter;
 import com.google.android.glass.widget.CardScrollView;
+import com.google.android.glass.widget.Slider;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -26,44 +28,39 @@ import java.util.List;
 
 public class ScrollCardsActivity extends Activity implements Runnable{
     private static final String TAG = ScrollCardsActivity.class.getSimpleName();
-
+    private Slider.GracePeriod mGracePeriod;
     private boolean mVoiceMenuEnabled = true;
     private List<String> mPicturesPath;
     private String mPicturePath;
     private CardScrollView mCardScroller;
     private CardScrollAdapter mAdapter;
-    private int mPicture=0;
     private boolean mAutoDelete = true;//TODO this one need to save as sharedpreferences
+    private List<CardBuilder> cards= new ArrayList<CardBuilder>();
+    CreateCardsTask cardstask =new CreateCardsTask();
+    private View root;
 
     @Override
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
-
+        mPicturesPath =Util.loadImages();
         // Requests a voice menu on this activity. As for any other window feature,
         // be sure to request this before setContentView() is called
         getWindow().requestFeature(WindowUtils.FEATURE_VOICE_COMMANDS);
+        //start asyntask
+        cardstask.execute(getApplicationContext());
 
-        mAdapter = new CardAdapter(createCards(this));
+        //initialize UI
+        mAdapter = new CardAdapter(createLoadCard(this));
         mCardScroller = new CardScrollView(this);
         mCardScroller.setAdapter(mAdapter);
         setContentView(mCardScroller);
         setCardScrollerListener();
     }
 
-    private List<CardBuilder> createCards(Context context) {
+    private List<CardBuilder> createLoadCard(Context context) {
         ArrayList<CardBuilder> cards = new ArrayList<CardBuilder>();
-        mPicturesPath = Util.loadImages();
-
-
-        BitmapFactory.Options opts=new BitmapFactory.Options();
-        opts.inJustDecodeBounds=true;
-        for (String path : mPicturesPath){
-            Bitmap myBitmap = BitmapFactory.decodeFile(path);
-
-            Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
-            cards.add(new CardBuilder(context, CardBuilder.Layout.CAPTION)
-                .addImage(Bitmap.createScaledBitmap(myBitmap, 640, 360, true)));
-        }
+        cards.add(new CardBuilder(context, CardBuilder.Layout.TEXT)
+                .setText("loading images:"));
         return cards;
     }
     private void setCardScrollerListener() {
@@ -224,12 +221,11 @@ public class ScrollCardsActivity extends Activity implements Runnable{
 
                 default: return true;  // No change.
             }
-            mCardScroller.setAdapter(new CardAdapter(createCards(this)));
+//            mCardScroller.setAdapter(new CardAdapter(createCards(this)));
             return true;
         }
         return super.onMenuItemSelected(featureId, item);
     }
-
 
     public void run() {
         Mail m = new Mail(Constant.em, Constant.constant);
@@ -257,6 +253,44 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         }
         catch(Exception e) {
             Log.e("Mail", "Could not send email", e);
+        }
+    }
+    private class CreateCardsTask extends AsyncTask<Context, Integer, List<CardBuilder>> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+        protected List<CardBuilder> doInBackground(Context... params) {
+            Log.v(TAG+"ASYN","Strat dib");
+            BitmapFactory.Options opts=new BitmapFactory.Options();
+            opts.inJustDecodeBounds=true;
+            int count =0;
+            for (String path : mPicturesPath){
+                Bitmap myBitmap = BitmapFactory.decodeFile(path);
+                publishProgress(++count);
+                Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
+                cards.add(new CardBuilder(params[0], CardBuilder.Layout.CAPTION)
+                        .addImage(Bitmap.createScaledBitmap(myBitmap, 640, 360, true)));
+            }
+            Log.v(TAG+"ASYN","end dib");
+            return cards;
+        }
+
+        protected void onProgressUpdate(Integer... progress) {
+//            CardBuilder cb =(CardBuilder)mAdapter.getItem(0);
+//            cb.setText("loading images:"+Integer.toString(progress[0]));
+            //.set("loading images"+Integer.toString(progress[0]));
+        }
+
+        protected void onPostExecute(List<CardBuilder> result) {
+//            listener.processFinish(result);
+            Log.v(TAG, "OnPostExecute");
+            mAdapter = new CardAdapter(cards);
+            mCardScroller.setAdapter(mAdapter);
+            // Tells the CardScrollView to activate and be ready for display.
+            mCardScroller.activate();
+            //redraw UI
+            mCardScroller.invalidate();
         }
     }
 
