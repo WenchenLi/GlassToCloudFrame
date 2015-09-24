@@ -234,9 +234,19 @@ public class ScrollCardsActivity extends Activity implements Runnable{
             if(m.send()&&mAutoDelete) {
                 int soundEffect = Sounds.SUCCESS;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                final int pos = mCardScroller.getSelectedItemPosition();
                 am.playSoundEffect(soundEffect);
-//                mCardScroller.
-                String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                cards.remove(pos);
+                mCardScroller.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        //TO save some battery,dont do animation
+//                        mCardScroller.animate(pos, CardScrollView.Animation.DELETION);
+                        mAdapter.notifyDataSetChanged();
+
+                    }
+                });
+                String path = mPicturesPath.get(pos);
                 Log.v(TAG, "delete file" + path);
                 File file = new File(path);
                 boolean deleted = file.delete();
