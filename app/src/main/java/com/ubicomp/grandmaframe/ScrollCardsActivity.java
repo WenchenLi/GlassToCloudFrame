@@ -42,6 +42,8 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     @Override
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
+
+
         mPicturesPath =Util.loadImages();
         // Requests a voice menu on this activity. As for any other window feature,
         // be sure to request this before setContentView() is called
@@ -59,8 +61,13 @@ public class ScrollCardsActivity extends Activity implements Runnable{
 
     private List<CardBuilder> createLoadCard(Context context) {
         ArrayList<CardBuilder> cards = new ArrayList<CardBuilder>();
-        cards.add(new CardBuilder(context, CardBuilder.Layout.TEXT)
-                .setText("loading images ..."));
+        cards.add(new CardBuilder(context, CardBuilder.Layout.CAPTION)
+                .setText("loading images ...")
+                .addImage(R.drawable.gram)
+                .setFootnote("Available processors:" + Integer.toString(//determine available processors
+                        Runtime.getRuntime().availableProcessors())));
+
+
         return cards;
     }
     private void setCardScrollerListener() {
