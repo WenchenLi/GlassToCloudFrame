@@ -37,6 +37,9 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     private boolean mAutoDelete = true;//TODO this one need to save as sharedpreferences
     private List<CardBuilder> cards= new ArrayList<CardBuilder>();
     CreateCardsTask cardstask =new CreateCardsTask();
+    private int mPos;
+    private ArrayList<Integer> mDeleteQueue = new ArrayList<Integer>();//TODO
+    private ArrayList<Integer> mSendQueue = new ArrayList<Integer>();
     private View root;
 
     @Override
@@ -117,7 +120,8 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         // activity, start a service, or broadcast another intent.
         switch (item.getItemId()) {
             case R.id.send_picture:
-                mPicturePath=mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                mPos = mCardScroller.getSelectedItemPosition();
+                mPicturePath=mPicturesPath.get(mPos);
                 Log.v(TAG+":onMenuItemSelected",mPicturePath);
                 Thread thread = new Thread(ScrollCardsActivity.this);
                 thread.start();
@@ -192,7 +196,8 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         if (featureId == WindowUtils.FEATURE_VOICE_COMMANDS) {
             switch (item.getItemId()) {
                 case R.id.send_picture:
-                    mPicturePath=mPicturesPath.get(mCardScroller.getSelectedItemPosition());
+                    mPos = mCardScroller.getSelectedItemPosition();
+                    mPicturePath=mPicturesPath.get(mPos);
                     Log.v(TAG+":onMenuItemSelected",mPicturePath);
                     Thread thread = new Thread(ScrollCardsActivity.this);
                     thread.start();
@@ -241,9 +246,8 @@ public class ScrollCardsActivity extends Activity implements Runnable{
             if(m.send()&&mAutoDelete) {
                 int soundEffect = Sounds.SUCCESS;
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                final int pos = mCardScroller.getSelectedItemPosition();
                 am.playSoundEffect(soundEffect);
-                cards.remove(pos);
+                cards.remove(mPos);
                 mCardScroller.post(new Runnable() {
                     @Override
                     public void run() {
@@ -253,7 +257,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
 
                     }
                 });
-                String path = mPicturesPath.get(pos);
+                String path = mPicturesPath.get(mPos);
                 Log.v(TAG, "delete file" + path);
                 File file = new File(path);
                 boolean deleted = file.delete();
