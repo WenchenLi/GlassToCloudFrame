@@ -58,7 +58,7 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         mAdapter = new CardAdapter(createLoadCard(this));
         mCardScroller = new CardScrollView(this);
         mCardScroller.setAdapter(mAdapter);
-        setContentView(mCardScroller);
+//        setContentView(mCardScroller);
         setCardScrollerListener();
     }
 
@@ -95,7 +95,9 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     @Override
     protected void onResume() {
         super.onResume();
-        mCardScroller.activate();
+        if(cards.size()<10 && cards.size()>0)cardstask.execute(getApplicationContext());
+        else mCardScroller.activate();
+
     }
 
     @Override
@@ -118,9 +120,10 @@ public class ScrollCardsActivity extends Activity implements Runnable{
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle item selection. Menu items typically start another
         // activity, start a service, or broadcast another intent.
+        mPos = mCardScroller.getSelectedItemPosition();
         switch (item.getItemId()) {
             case R.id.send_picture:
-                mPos = mCardScroller.getSelectedItemPosition();
+
                 mPicturePath=mPicturesPath.get(mPos);
                 Log.v(TAG+":onMenuItemSelected",mPicturePath);
                 Thread thread = new Thread(ScrollCardsActivity.this);
@@ -130,6 +133,9 @@ public class ScrollCardsActivity extends Activity implements Runnable{
                 }else mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
                 break;
             case R.id.delete_picture:
+                cards.remove(mPos);
+                if(mCardScroller.getSelectedItemPosition()==cards.size())mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()-1);
+                else mCardScroller.setSelection(mCardScroller.getSelectedItemPosition()+1);
                 String path = mPicturesPath.get(mCardScroller.getSelectedItemPosition());
                 Log.v(TAG,"delete file"+path);
                 File file = new File(path);
@@ -280,14 +286,20 @@ public class ScrollCardsActivity extends Activity implements Runnable{
         protected List<CardBuilder> doInBackground(Context... params) {
             Log.v(TAG+"ASYN","Strat dib");
             BitmapFactory.Options opts=new BitmapFactory.Options();
+            if(mPicturesPath.size()>10){
+                opts.inSampleSize = 8;
+                Log.v(TAG+"opts sample size", String.valueOf(opts.inSampleSize));
+
+            }
             opts.inJustDecodeBounds=true;
             int count =0;
             for (String path : mPicturesPath){
                 Bitmap myBitmap = BitmapFactory.decodeFile(path);
                 publishProgress(++count);
-                Bitmap.createScaledBitmap(myBitmap, 640, 360, true);
+                Bitmap.createScaledBitmap(myBitmap, 640, 360, false);
                 cards.add(new CardBuilder(params[0], CardBuilder.Layout.CAPTION)
                         .addImage(Bitmap.createScaledBitmap(myBitmap, 640, 360, true)));
+                if(cards.size()==10)break;
             }
             Log.v(TAG+"ASYN","end dib");
             return cards;
